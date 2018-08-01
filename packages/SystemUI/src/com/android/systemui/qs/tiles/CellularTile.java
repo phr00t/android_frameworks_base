@@ -142,6 +142,12 @@ public class CellularTile extends QSTileImpl<SignalState> {
     @Override
     protected void handleSecondaryClick() {
         if (mDataController.isMobileDataSupported()) {
+            if (mKeyguardMonitor.isSecure() && !mKeyguardMonitor.canSkipBouncer()) {
+                mActivityStarter.postQSRunnableDismissingKeyguard(() -> {
+                    showDetail(true);
+                });
+                return;
+            }
             showDetail(true);
         } else {
             mActivityStarter
@@ -167,6 +173,7 @@ public class CellularTile extends QSTileImpl<SignalState> {
         state.activityOut = cb.enabled && cb.activityOut;
         state.isOverlayIconWide = cb.isDataTypeIconWide;
         state.overlayIconId = cb.dataTypeIconId;
+        state.dualTarget = true;
 
         state.label = r.getString(R.string.mobile_data);
 

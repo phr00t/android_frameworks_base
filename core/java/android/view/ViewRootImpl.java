@@ -3601,6 +3601,11 @@ public final class ViewRootImpl implements ViewParent,
                     && mViewLayoutDirectionInitial == View.LAYOUT_DIRECTION_INHERIT) {
                 mView.setLayoutDirection(currentLayoutDirection);
             }
+
+            if (mWindowAttributes.type == WindowManager.LayoutParams.TYPE_SIGNBOARD_NORMAL) {
+                config.orientation = Configuration.ORIENTATION_PORTRAIT;
+            }
+
             mView.dispatchConfigurationChanged(config);
 
             // We could have gotten this {@link Configuration} update after we called
@@ -7733,6 +7738,7 @@ public final class ViewRootImpl implements ViewParent,
             if (!registered) {
                 mAttachInfo.mAccessibilityWindowId =
                         mAccessibilityManager.addAccessibilityInteractionConnection(mWindow,
+                                mContext.getPackageName(),
                                 new AccessibilityInteractionConnection(ViewRootImpl.this));
             }
         }

@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.content.res.Resources.Theme;
 import android.database.ContentObserver;
 import android.database.Cursor;
@@ -104,6 +105,7 @@ import com.android.server.broadcastradio.BroadcastRadioService;
 import com.android.server.restrictions.RestrictionsManagerService;
 import com.android.server.security.KeyAttestationApplicationIdProviderService;
 import com.android.server.security.KeyChainSystemService;
+import com.android.server.SignBoardService;
 import com.android.server.soundtrigger.SoundTriggerService;
 import com.android.server.statusbar.StatusBarManagerService;
 import com.android.server.storage.DeviceStorageMonitorService;
@@ -1903,6 +1905,15 @@ public final class SystemServer {
             }
             traceEnd();
         }, BOOT_TIMINGS_TRACE_LOG);
+
+        if (Resources.getSystem().getBoolean(R.bool.config_enableSignBoard)) {
+            try {
+                ServiceManager.addService(Context.SIGNBOARD_SERVICE, new SignBoardService(context));
+            }
+            catch (Throwable e) {
+                Slog.e(TAG, "Failed to add SignBoard Service", e);
+            }
+        }
     }
 
     static final void startSystemUi(Context context, WindowManagerService windowManager) {

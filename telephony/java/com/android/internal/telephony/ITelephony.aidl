@@ -1352,12 +1352,12 @@ interface ITelephony {
      * Returns null if the query fails.
      *
      *
-     * <p>Requires that the calling app has READ_PRIVILEGED_PHONE_STATE
+     * <p>Requires that the calling app has READ_PRIVILEGED_PHONE_STATE or READ_PHONE_STATE
      *
      * @param subId subscription ID used for authentication
      * @param appType the icc application type, like {@link #APPTYPE_USIM}
      */
-    String[] getForbiddenPlmns(int subId, int appType);
+    String[] getForbiddenPlmns(int subId, int appType, String callingPackage);
 
     /**
      * Check if phone is in emergency callback mode
@@ -1377,4 +1377,15 @@ interface ITelephony {
      * @hide
      */
     SignalStrength getSignalStrength(int subId);
+
+    /**
+     * Get ATR (Answer To Reset; as per ISO/IEC 7816-4) from SIM card
+     */
+    byte[] getAtr();
+
+    /**
+     * Get ATR (Answer To Reset; as per ISO/IEC 7816-4) from SIM card
+     * for a particular subId.
+     */
+    byte[] getAtrUsingSubId(int subId);
 }

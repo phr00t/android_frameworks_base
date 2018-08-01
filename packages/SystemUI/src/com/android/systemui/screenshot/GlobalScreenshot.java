@@ -16,62 +16,31 @@
 
 package com.android.systemui.screenshot;
 
-import static com.android.systemui.screenshot.GlobalScreenshot.SHARING_INTENT;
-import static com.android.systemui.statusbar.phone.StatusBar.SYSTEM_DIALOG_REASON_SCREENSHOT;
-
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.animation.ValueAnimator.AnimatorUpdateListener;
-import android.app.ActivityManager;
-import android.app.ActivityOptions;
-import android.app.admin.DevicePolicyManager;
-import android.app.Notification;
+import android.app.*;
 import android.app.Notification.BigPictureStyle;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
+import android.app.admin.DevicePolicyManager;
+import android.content.*;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.PixelFormat;
-import android.graphics.PointF;
-import android.graphics.Rect;
+import android.graphics.*;
 import android.media.MediaActionSound;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.PowerManager;
+import android.os.*;
 import android.os.Process;
-import android.os.RemoteException;
-import android.os.UserHandle;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Slog;
-import android.view.Display;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.Surface;
-import android.view.SurfaceControl;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
+import android.view.*;
 import android.view.animation.Interpolator;
 import android.widget.ImageView;
 import android.widget.Toast;
-
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.systemui.R;
 import com.android.systemui.SystemUI;
@@ -84,6 +53,9 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+
+import static com.android.systemui.screenshot.GlobalScreenshot.SHARING_INTENT;
+import static com.android.systemui.statusbar.phone.StatusBar.SYSTEM_DIALOG_REASON_SCREENSHOT;
 
 /**
  * POD used in the AsyncTask which saves an image in the background.
@@ -163,7 +135,8 @@ class SaveImageInBackgroundTask extends AsyncTask<Void, Void, Void> {
         mImageTime = System.currentTimeMillis();
         String imageDate = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date(mImageTime));
         CharSequence appName = getRunningActivityName(context);
-        if (appName != null) {
+        boolean onKeyguard = context.getSystemService(KeyguardManager.class).isKeyguardLocked();
+        if (!onKeyguard && appName != null) {
             // Replace all spaces and special chars with an underscore
             String appNameString = appName.toString().replaceAll("[\\\\/:*?\"<>|\\s]+", "_");
             mImageFileName = String.format(SCREENSHOT_FILE_NAME_TEMPLATE_APPNAME,
@@ -607,7 +580,22 @@ class GlobalScreenshot {
         }
 
         // Take the screenshot
-        mScreenBitmap = SurfaceControl.screenshot((int) dims[0], (int) dims[1]);
+        if (Resources.getSystem().getBoolean(com.android.internal.R.bool.config_enableSignBoard)) {
+            int sbHeight = Resources.getSystem().getDimensionPixelSize(com.android.internal.R.dimen.config_signBoardHeight);
+
+            if (Settings.Secure.getInt(mContext.getContentResolver(), Settings.Secure.ENABLE_SIGNBOARD_SCREENSHOT, 0) == 0) {
+                Rect rect = new Rect(0,
+                        sbHeight,
+                        (int) dims[0],
+                        (int) dims[1] + sbHeight);
+                mScreenBitmap = SurfaceControl.screenshot((int) dims[0], (int) dims[1], rect);
+            } else {
+                mScreenBitmap = SurfaceControl.screenshot((int) dims[0], (int) dims[1] + sbHeight);
+            }
+        } else {
+            mScreenBitmap = SurfaceControl.screenshot((int) dims[0], (int) dims[1]);
+        }
+
         if (mScreenBitmap == null) {
             notifyScreenshotError(mContext, mNotificationManager,
                     R.string.screenshot_failed_to_capture_text);

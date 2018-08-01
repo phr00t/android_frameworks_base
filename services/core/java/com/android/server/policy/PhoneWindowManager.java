@@ -94,6 +94,9 @@ import static android.view.WindowManager.LayoutParams.TYPE_PRESENTATION;
 import static android.view.WindowManager.LayoutParams.TYPE_PRIORITY_PHONE;
 import static android.view.WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION;
 import static android.view.WindowManager.LayoutParams.TYPE_QS_DIALOG;
+import static android.view.WindowManager.LayoutParams.FIRST_SIGNBOARD_WINDOW;
+import static android.view.WindowManager.LayoutParams.TYPE_SIGNBOARD_NORMAL;
+import static android.view.WindowManager.LayoutParams.LAST_SIGNBOARD_WINDOW;
 import static android.view.WindowManager.LayoutParams.TYPE_SCREENSHOT;
 import static android.view.WindowManager.LayoutParams.TYPE_SEARCH_BAR;
 import static android.view.WindowManager.LayoutParams.TYPE_SECURE_SYSTEM_OVERLAY;
@@ -154,6 +157,7 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.ContentObserver;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.hardware.camera2.CameraAccessException;
@@ -486,6 +490,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     int[] mNavigationBarWidthForRotationDefault = new int[4];
     int[] mNavigationBarHeightForRotationInCarMode = new int[4];
     int[] mNavigationBarWidthForRotationInCarMode = new int[4];
+
+    WindowState mSignBoard = null;
 
     private LongSparseArray<IShortcutService> mShortcutKeyServices = new LongSparseArray<>();
 
@@ -1579,7 +1585,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mPowerKeyHandled = true;
             mHandler.removeMessages(MSG_POWER_LONG_PRESS);
             // See if we deferred screen wake because long press power for torch is enabled
-            if (mResolvedLongPressOnPowerBehavior == LONG_PRESS_POWER_TORCH && !isScreenOn()) {
+            if (mResolvedLongPressOnPowerBehavior == LONG_PRESS_POWER_TORCH &&
+                    (!isScreenOn() || isDozeMode())) {
                 wakeUpFromPowerKey(SystemClock.uptimeMillis());
             }
         }
@@ -1786,11 +1793,24 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     }
 
+    private boolean isDozeMode() {
+        IDreamManager dreamManager = getDreamManager();
+
+        try {
+            if (dreamManager != null && dreamManager.isDreaming()) {
+                return true;
+            }
+        } catch (RemoteException e) {
+            Slog.e(TAG, "RemoteException when checking if dreaming", e);
+        }
+        return false;
+    }
+
     private int getResolvedLongPressOnPowerBehavior() {
         if (FactoryTest.isLongPressOnPowerOffEnabled()) {
             return LONG_PRESS_POWER_SHUT_OFF_NO_CONFIRM;
         }
-        if (mTorchLongPressPowerEnabled && !isScreenOn()) {
+        if (mTorchLongPressPowerEnabled && (!isScreenOn() || isDozeMode())) {
             return LONG_PRESS_POWER_TORCH;
         }
         return mLongPressOnPowerBehavior;
@@ -2848,7 +2868,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         if (!((type >= FIRST_APPLICATION_WINDOW && type <= LAST_APPLICATION_WINDOW)
                 || (type >= FIRST_SUB_WINDOW && type <= LAST_SUB_WINDOW)
-                || (type >= FIRST_SYSTEM_WINDOW && type <= LAST_SYSTEM_WINDOW))) {
+                || (type >= FIRST_SYSTEM_WINDOW && type <= LAST_SYSTEM_WINDOW)
+                || (type >= FIRST_SIGNBOARD_WINDOW && type <= LAST_SIGNBOARD_WINDOW))) {
             return WindowManagerGlobal.ADD_INVALID_TYPE;
         }
 
@@ -2874,6 +2895,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 case TYPE_VOICE_INTERACTION:
                 case TYPE_ACCESSIBILITY_OVERLAY:
                 case TYPE_QS_DIALOG:
+                case TYPE_SIGNBOARD_NORMAL:
                     // The window manager will check these.
                     return ADD_OKAY;
             }
@@ -2958,6 +2980,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             case TYPE_DISPLAY_OVERLAY:
             case TYPE_INPUT_CONSUMER:
             case TYPE_KEYGUARD_DIALOG:
+            case TYPE_SIGNBOARD_NORMAL:
             case TYPE_MAGNIFICATION_OVERLAY:
             case TYPE_NAVIGATION_BAR:
             case TYPE_NAVIGATION_BAR_PANEL:
@@ -3139,15 +3162,16 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     @Override
     public int getNonDecorDisplayWidth(int fullWidth, int fullHeight, int rotation, int uiMode,
             int displayId) {
+        int sbHeight = Resources.getSystem().getDimensionPixelSize(R.dimen.config_signBoardHeight);
         // TODO(multi-display): Support navigation bar on secondary displays.
         if (displayId == DEFAULT_DISPLAY && hasNavigationBar()) {
             // For a basic navigation bar, when we are in landscape mode we place
             // the navigation bar to the side.
             if (mNavigationBarCanMove && fullWidth > fullHeight) {
-                return fullWidth - getNavigationBarWidth(rotation, uiMode);
+                return fullWidth - getNavigationBarWidth(rotation, uiMode) - sbHeight;
             }
         }
-        return fullWidth;
+        return fullWidth - sbHeight;
     }
 
     private int getNavigationBarHeight(int rotation, int uiMode) {
@@ -3161,15 +3185,16 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     @Override
     public int getNonDecorDisplayHeight(int fullWidth, int fullHeight, int rotation, int uiMode,
             int displayId) {
-        // TODO(multi-display): Support navigation bar on secondary displays.
+        int sbHeight = Resources.getSystem().getDimensionPixelSize(R.dimen.config_signBoardHeight);
+// TODO(multi-display): Support navigation bar on secondary displays.
         if (displayId == DEFAULT_DISPLAY && hasNavigationBar()) {
             // For a basic navigation bar, when we are in portrait mode we place
             // the navigation bar to the bottom.
             if (!mNavigationBarCanMove || fullWidth < fullHeight) {
-                return fullHeight - getNavigationBarHeight(rotation, uiMode);
+                return fullHeight - getNavigationBarHeight(rotation, uiMode) - sbHeight;
             }
         }
-        return fullHeight;
+        return fullHeight - sbHeight;
     }
 
     @Override
@@ -3203,6 +3228,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         switch (win.getAttrs().type) {
             case TYPE_STATUS_BAR:
             case TYPE_NAVIGATION_BAR:
+            case TYPE_SIGNBOARD_NORMAL:
             case TYPE_WALLPAPER:
             case TYPE_DREAM:
                 return false;
@@ -3469,6 +3495,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 mNavigationBarController.setOnBarVisibilityChangedListener(
                         mNavBarVisibilityListener, true);
                 if (DEBUG_LAYOUT) Slog.i(TAG, "NAVIGATION BAR: " + mNavigationBar);
+                break;
+            case TYPE_SIGNBOARD_NORMAL:
+                mSignBoard = win;
                 break;
             case TYPE_NAVIGATION_BAR_PANEL:
             case TYPE_STATUS_BAR_PANEL:
@@ -5383,6 +5412,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     public void layoutWindowLw(WindowState win, WindowState attached) {
         // We've already done the navigation bar and status bar. If the status bar can receive
         // input, we need to layout it again to accomodate for the IME window.
+        
         if ((win == mStatusBar && !canReceiveInput(win)) || win == mNavigationBar) {
             return;
         }
@@ -5889,7 +5919,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
         }
 
-        if (DEBUG_LAYOUT) Slog.v(TAG, "Compute frame " + attrs.getTitle()
+        if (DEBUG_LAYOUT) Slog.e(TAG, "Compute frame " + attrs.getTitle()
                 + ": sim=#" + Integer.toHexString(sim)
                 + " attach=" + attached + " type=" + attrs.type
                 + String.format(" flags=0x%08x", fl)
@@ -5900,7 +5930,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 + " sf=" + sf.toShortString()
                 + " osf=" + (osf == null ? "null" : osf.toShortString()));
 
-        win.computeFrameLw(pf, df, of, cf, vf, dcf, sf, osf);
+        if (!layoutWindowLwCustom(win)) win.computeFrameLw(pf, df, of, cf, vf, dcf, sf, osf);
 
         // Dock windows carve out the bottom of the screen, so normal windows
         // can't appear underneath them.
@@ -5913,6 +5943,34 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 && !win.getGivenInsetsPendingLw()) {
             offsetVoiceInputWindowLw(win);
         }
+    }
+
+    private boolean layoutWindowLwCustom(WindowState win) {
+        if (win.getAttrs().type == TYPE_SIGNBOARD_NORMAL && Resources.getSystem().getBoolean(R.bool.config_enableSignBoard)) {
+            Rect rect = new Rect();
+            int sbHeight = Resources.getSystem().getDimensionPixelSize(R.dimen.config_signBoardHeight);
+
+            switch (mDisplayRotation) {
+                case Surface.ROTATION_0:
+                    rect.set(400, -sbHeight, mOverscanScreenWidth, 0);
+                    break;
+                case Surface.ROTATION_90:
+                    rect.set(-sbHeight, 0, 0, mOverscanScreenHeight - 400);
+                    break;
+                case Surface.ROTATION_180:
+                    rect.set(0, mOverscanScreenHeight, mOverscanScreenWidth - 400, mOverscanScreenHeight + sbHeight);
+                    break;
+                case Surface.ROTATION_270:
+                    rect.set(mOverscanScreenWidth, 400, mOverscanScreenWidth + sbHeight, mOverscanScreenHeight);
+                    break;
+            }
+
+            win.computeFrameLw(rect, rect, rect, rect, rect, rect, rect, rect);
+
+            return true;
+        }
+
+        return false;
     }
 
     private void layoutWallpaper(WindowState win, Rect pf, Rect df, Rect of, Rect cf) {
@@ -6474,7 +6532,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE_WHILE_AWAKE,
                     UserHandle.CURRENT)) {
                 mScreenshotConnection = conn;
-                mHandler.postDelayed(mScreenshotTimeout, 10000);
+                if (screenshotType != WindowManager.TAKE_SCREENSHOT_SELECTED_REGION) {
+                    mHandler.postDelayed(mScreenshotTimeout, 10000);
+                }
             }
         }
     }
@@ -6741,8 +6801,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
 
             case KeyEvent.KEYCODE_HOME:
-                if (down && !interactive && mHomeWakeScreen) {
-                    isWakeKey = true;
+                if (down && !interactive) {
+                    isWakeKey = mHomeWakeScreen;
+                    if (!isWakeKey) {
+                        useHapticFeedback = false;
+                    }
                 }
                 break;
 
@@ -7133,6 +7196,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             return false;
         }
 
+        final boolean isDozing = isDozeMode();
+
+        if (event != null && isVolumeKey(event) && isDozing) {
+            return false;
+        }
+
         // Send events to keyguard while the screen is on and it's showing.
         if (isKeyguardShowingAndNotOccluded() && !displayOff) {
             return true;
@@ -7148,19 +7217,18 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         // Send events to a dozing dream even if the screen is off since the dream
         // is in control of the state of the screen.
-        IDreamManager dreamManager = getDreamManager();
-
-        try {
-            if (dreamManager != null && dreamManager.isDreaming()) {
-                return true;
-            }
-        } catch (RemoteException e) {
-            Slog.e(TAG, "RemoteException when checking if dreaming", e);
+        if (isDozing) {
+            return true;
         }
 
         // Otherwise, consume events since the user can't see what is being
         // interacted with.
         return false;
+    }
+
+    private boolean isVolumeKey(KeyEvent event) {
+        return event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN
+                || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP;
     }
 
     private void dispatchDirectAudioEvent(KeyEvent event) {

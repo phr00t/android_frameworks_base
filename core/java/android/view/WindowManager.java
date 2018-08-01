@@ -350,6 +350,8 @@ public interface WindowManager extends ViewManager {
                         to = "TYPE_DOCK_DIVIDER"),
                 @ViewDebug.IntToString(from = TYPE_QS_DIALOG,
                         to = "TYPE_QS_DIALOG"),
+                @ViewDebug.IntToString(from = TYPE_SIGNBOARD_NORMAL,
+                        to = "TYPE_SIGNBOARD_NORMAL"),
                 @ViewDebug.IntToString(from = TYPE_SCREENSHOT,
                         to = "TYPE_SCREENSHOT"),
                 @ViewDebug.IntToString(from = TYPE_APPLICATION_OVERLAY,
@@ -755,6 +757,21 @@ public interface WindowManager extends ViewManager {
         public static final int LAST_SYSTEM_WINDOW      = 2999;
 
         /**
+         * Begin SignBoard Windows
+         */
+        public static final int FIRST_SIGNBOARD_WINDOW = 3000;
+
+        /**
+         * Normal SignBoard Window object
+         */
+        public static final int TYPE_SIGNBOARD_NORMAL = FIRST_SIGNBOARD_WINDOW + 1;
+
+        /**
+         * End SignBoard Windows
+         */
+        public static final int LAST_SIGNBOARD_WINDOW = 3999;
+
+        /**
          * @hide
          * Used internally when there is no suitable type available.
          */
@@ -775,6 +792,7 @@ public interface WindowManager extends ViewManager {
                 case TYPE_SYSTEM_ERROR:
                 case TYPE_SYSTEM_OVERLAY:
                 case TYPE_APPLICATION_OVERLAY:
+                case TYPE_SIGNBOARD_NORMAL:
                     return true;
             }
             return false;

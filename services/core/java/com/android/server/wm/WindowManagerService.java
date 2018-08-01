@@ -59,6 +59,7 @@ import static android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD_DIALOG;
 import static android.view.WindowManager.LayoutParams.TYPE_NAVIGATION_BAR;
 import static android.view.WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION;
 import static android.view.WindowManager.LayoutParams.TYPE_QS_DIALOG;
+import static android.view.WindowManager.LayoutParams.TYPE_SIGNBOARD_NORMAL;
 import static android.view.WindowManager.LayoutParams.TYPE_STATUS_BAR;
 import static android.view.WindowManager.LayoutParams.TYPE_TOAST;
 import static android.view.WindowManager.LayoutParams.TYPE_VOICE_INTERACTION;
@@ -1255,6 +1256,7 @@ public class WindowManagerService extends IWindowManager.Stub
             }
 
             AppWindowToken atoken = null;
+
             final boolean hasParent = parentWindow != null;
             // Use existing parent window token for child windows since they go in the same token
             // as there parent window so we can apply the same policy on them.
@@ -1370,6 +1372,9 @@ public class WindowManagerService extends IWindowManager.Stub
                             + attrs.token + ".  Aborting.");
                     return WindowManagerGlobal.ADD_BAD_APP_TOKEN;
                 }
+            } else if (type == TYPE_SIGNBOARD_NORMAL) {
+                attrs.token = null;
+                token = new WindowToken(this, client.asBinder(), type, true, displayContent, session.mCanAddInternalSystemWindow);
             } else if (token.asAppWindowToken() != null) {
                 Slog.w(TAG_WM, "Non-null appWindowToken for system window of rootType=" + rootType);
                 // It is not valid to use an app token with other system types; we will
@@ -4829,6 +4834,8 @@ public class WindowManagerService extends IWindowManager.Stub
             if (displayContent != null) {
                 mAnimator.addDisplayLocked(displayId);
                 displayContent.initializeDisplayBaseInfo();
+                
+//                displayContent.mBaseDisplayHeight += 160;
             }
         }
     }

@@ -270,6 +270,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/IRecoverySystemProgressListener.aidl \
 	core/java/android/os/IRemoteCallback.aidl \
 	core/java/android/os/ISchedulingPolicyService.aidl \
+	core/java/android/os/ISignBoardService.aidl \
 	core/java/android/os/IThermalEventListener.aidl \
 	core/java/android/os/IThermalService.aidl \
 	core/java/android/os/IUpdateLock.aidl \
@@ -570,6 +571,8 @@ LOCAL_SRC_FILES += \
 	../native/cmds/installd/binder/android/os/IInstalld.aidl \
 
 LOCAL_AIDL_INCLUDES += system/update_engine/binder_bindings
+
+LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
 
 LOCAL_AIDL_INCLUDES += frameworks/base/lowpan/java
 LOCAL_SRC_FILES += \
