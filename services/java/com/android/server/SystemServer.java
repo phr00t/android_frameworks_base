@@ -1906,15 +1906,14 @@ public final class SystemServer {
             traceEnd();
         }, BOOT_TIMINGS_TRACE_LOG);
 
-        // always start service
-        //if (Resources.getSystem().getBoolean(R.bool.config_enableSignBoard)) {
+        if (Resources.getSystem().getBoolean(R.bool.config_enableSignBoard)) {
             try {
                 ServiceManager.addService(Context.SIGNBOARD_SERVICE, new SignBoardService(context));
             }
             catch (Throwable e) {
                 Slog.e(TAG, "Failed to add SignBoard Service", e);
             }
-        //}
+        }
     }
 
     static final void startSystemUi(Context context, WindowManagerService windowManager) {
