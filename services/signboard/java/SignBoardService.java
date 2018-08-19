@@ -46,7 +46,7 @@ public class SignBoardService extends ISignBoardService.Stub {
 	private Observer observer;
 	private WindowManagerImpl windowManager;
 	private PowerManager.WakeLock aodWakeLock;
-
+/*
 	private BroadcastReceiver screenReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -72,7 +72,7 @@ public class SignBoardService extends ISignBoardService.Stub {
 			}
 		}
 	};
-
+*/
 	public SignBoardService(Context context) {
 		super();
 		this.context = context;
@@ -99,12 +99,14 @@ public class SignBoardService extends ISignBoardService.Stub {
 		signBoardHandler = new SignBoardWorkerHandler(signBoardWorker.getLooper());
 		observer = new Observer();
 		observer.onCreate();
+		/*
 		aodWakeLock = context.getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AOD");
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         context.registerReceiver(screenReceiver, filter);
+	*/
 	}
 
     private void parseAndAddPages() {
